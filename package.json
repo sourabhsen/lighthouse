@@ -1,0 +1,26 @@
+{
+  "name": "lighthouse-tester",
+  "version": "2.1.2",
+  "description": "Script lighthouse tests through pupeteer to support authentication flows through cookies and localStorage",
+  "main": "cli.js",
+  "dependencies": {
+    "chalk": "4.1.1",
+    "chrome-debug": "^1.0.0",
+    "chrome-launcher": "0.14.0",
+    "csvtojson": "^2.0.10",
+    "minimist": "^1.2.0",
+    "web-vitals": "2.0.1",
+    "webpagetest": "^0.4.0",
+    "yaml": "1.10.2"
+  },
+  "devDependencies": {
+    "lighthouse": "8.0.0",
+    "puppeteer-core": "10.1.0"
+  },
+  "scripts": {
+    "start": "node cli.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Brian Bolton <bbolton@aarp.org>",
+  "license": "MIT"
+}

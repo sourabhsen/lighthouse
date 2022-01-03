@@ -1,0 +1,401 @@
+const chromeLauncher = require('chrome-launcher');
+const puppeteer = require('puppeteer-core');
+const lighthouse = require('lighthouse');
+const fs = require('fs');
+const os = require('os');
+const csv = require('csvtojson');
+const args = require('minimist')(process.argv.slice(2));
+const blockGroups = require('./urlBlocks');
+
+if (args.help) {
+    console.info(`node index.js [--path path/to/input.csv] [--onlyLine 2] [--onlyLines 2,11-15]
+  path
+    Specify the input csv, defaults to './urls.csv'.
+
+  onlyLine
+  onlyLines
+    Specify one or more line numbers (comma separated or a range with a hyphen), in case of a failure.
+`);
+    return;
+}
+// Expand input
+if (args.onlyLine) {
+    if (typeof args.onlyLine === 'number') {
+        args.onlyLine = [args.onlyLine];
+    }
+}
+if (args.onlyLines) {
+    if (typeof args.onlyLines === 'string') {
+        const groups = args.onlyLines.split(',');
+        args.onlyLine = groups.reduce((output, group) => {
+            const [lower, upper] = group.split('-');
+            if (upper) {
+                let count = parseInt(lower);
+                while (count <= parseInt(upper)) {
+                    output.push(count);
+                    count++;
+                }
+            } else {
+                output.push(parseInt(lower));
+            }
+            return output;
+        }, []);
+    }
+}
+
+const categories = args.categories ?
+                    args.categories.split(',') :
+                    [
+                        'performance',
+                        'seo',
+                        'best-practices',
+                        'accessibility'
+                    ];
+
+const blockedPatterns = args.blockedGroups ? args.blockedGroups.split(',').reduce((groups, group) => {
+        groups.push(...blockGroups[group]);
+
+        return groups;
+    }, []) : [];
+
+const evalClick = async (page, selector) => {
+    await page.evaluate(selector => {
+        document.querySelector(selector).click();
+    }, selector).catch(e => console.error(e));
+}
+
+const clickElement = async (page, selector) => {
+    try {
+        await page.waitForSelector(selector, {visible: true, timeout: 1000});
+        args.verbose && console.info(`  *  Clicking element ${selector}`);
+        await page.hover(selector);
+        await evalClick(page, selector);
+    } catch(e) {}
+}
+
+const closeModal = async page => clickElement(page, 'a.aarp-c-modal__close-button');
+
+const isAlreadyLoggedIn = async (page, urlConfig) => {
+    // If the current page starts with secure.aarp.org we were probably forwarded
+    // there due to no authentication
+    if (page.url().indexOf('aarp.org/applications/user') > -1) {
+        args.verbose && console.warn(`  *  On page at path ${page.url()}`);
+        return false;
+    }
+
+    let isLoggedIn = false;
+    if (urlConfig.needsAuth) {
+        isLoggedIn = await page.evaluate(() => {
+            return ['access_token', 'ss_token', 'ark_arenax_token', 'acctAccessToken'].reduce((acc, key) => {
+                const session = sessionStorage.getItem(key);
+                const local = localStorage.getItem(key);
+
+                if (session) {
+                    acc = 'Found in Session Storage';
+                    // We need to push to localStorage for testing to work
+                    localStorage.setItem(key, session);
+                }
+                if (local) {
+                    acc = 'Found in Local Storage';
+                }
+
+                return acc;
+            }, 'Not Found');
+        });
+
+        args.verbose && console.warn(`  *  Oauth token: ${isLoggedIn}`);
+    }
+    // args.verbose && console.warn(`  *  isLoggedIn: ${isLoggedIn}`);
+    return isLoggedIn;
+}
+
+const padNumber = number => {
+    return `${number}`.padStart(2, '0');
+};
+
+const buildGenericAuthUrl = uri => {
+    const state = encodeURIComponent(uri.href);
+    const isLower = (/-(pi|hw|cg|s|d)\./i).test(uri.hostname);
+    const env = isLower ? '-pi' : '';
+
+    const baseUrl = `https://secure${env}.aarp.org/applications/user/login`;
+
+    args.verbose && console.debug('  =  Generic Auth');
+
+    return `${baseUrl}?referrer=${state}`;
+}
+
+const buildOAuthUrl = uri => {
+    const redirectUri = encodeURIComponent(`${uri.origin}/aarp/auth/callback`);
+    const current = uri.href;
+    const state = encodeURIComponent(current);
+    const isLower = (/-(pi|hw|cg|s|d)\./i).test(uri.hostname);
+
+    const env = isLower ? '-pi' : '';
+
+    const baseUrl = `https://secure${env}.aarp.org/applications/user/auth`;
+    const clientId = isLower ? '0oakgt9j4hwrtHWUl0h7' : '0oa3rtsa6ahTQReOG2p7';
+
+    args.verbose && console.debug('  =  Generic OAuth');
+
+    return `${baseUrl}?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=bui+bmi+em`;
+};
+
+const buildCTGAuth = uri => {
+    const redirectUri = `${uri.origin}/auth/callback`;
+    const current = uri.href;
+    const state = current;
+    const isLower = (/-(pi|hw|cg|s|d)\./i).test(uri.hostname);
+
+    const env = isLower ? '-pi' : '';
+
+    const baseUrl = `https://secure${env}.aarp.org/applications/user/login`;
+    const clientId = isLower ? '0oakyycc8uNRLzaKi0h7' : '0oa44q7u6j2kfGSsu2p7';
+
+    args.verbose && console.debug('  =  CTG OAuth');
+
+    return `${baseUrl}?response_type=code&scope=bui%20em&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&promo=CTG`;
+};
+
+const buildStayingSharpAuth = uri => {
+    const redirectUri = `${uri.origin}/aarp/auth/callback`;
+    const current = uri.href;
+    const state = current;
+    const isLower = (/-(pi|hw|cg|s|d)\./i).test(uri.hostname);
+
+    const env = isLower ? '-pi' : '';
+
+    const baseUrl = `https://secure${env}.aarp.org/applications/user/login`;
+    const clientId = isLower ? '0oaet8p0o1NsfDK8a0h7' : '0oa1terqo2RLqYS5V2p7';
+
+    args.verbose && console.debug(`  =  Staying Sharp OAuth`);
+
+    return `${baseUrl}?promo=sm-ss&response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=basic_user_info%20basic_membership_info%20subscription_info&state=${state}`;
+}
+
+const buildRewardsOauth = uri => {
+    const redirectUri = encodeURIComponent(`${uri.origin}/aarp/auth/callback`);
+    const current = uri.href;
+    const state = encodeURIComponent(current);
+    const isLower = (/-(pi|hw|cg|s|d)\./i).test(uri.hostname);
+
+    const env = isLower ? '-pi' : '';
+
+    const baseUrl = `https://secure${env}.aarp.org/applications/user/login`;
+    const clientId = isLower ? '0oakgt9j4hwrtHWUl0h7' : '0oa3rtsa6ahTQReOG2p7';
+
+    args.verbose && console.debug('  =  Rewards OAuth');
+
+    return `${baseUrl}?custom=AARPRewards&response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=bui+bmi`;
+}
+
+const buildLogoutUrl = uri => {
+    const state = uri.href;
+    const isLower = (/-(pi|hw|cg|s|d)\./i).test(uri.hostname);
+
+    const env = isLower ? '-pi' : '';
+
+    return `https://secure${env}.aarp.org/applications/user/logout/logout?referrer=${state}`
+}
+
+const blockAnalytics = async page => {
+    await page.setRequestInterception(true);
+    page.on('request', request => {
+        const url = request.url();
+        const shouldAbort = [
+            ...blockGroups['analytics'].map(item => item.replace(/\*/g, '')),
+            ...blockGroups['ads'].map(item => item.replace(/\*/g, '')),
+            ...blockGroups['thirdPartyPartner'].map(item => item.replace(/\*/g, '')),
+            ...blockGroups['cmsImages'].map(item => item.replace(/\*/g, '')),
+        ].some(urlPart => url.includes(urlPart));
+
+        if (shouldAbort) {
+            request.abort();
+        } else {
+            request.continue();
+        }
+    });
+}
+
+const headless = args.headless ? '--headless' : '';
+
+let currentCount = 0;
+let shouldWarnOAuth = false;
+
+(async () => {
+    const date = new Date();
+    const urls = await csv().fromFile(args.path || './urls.csv');
+    const chrome = await chromeLauncher.launch({
+        chromeFlags: [
+            headless
+        ]
+    });
+    const browser = await puppeteer.connect({
+        browserURL: `http://localhost:${chrome.port}`,
+        defaultViewport: false
+    });
+
+    // Set this instance to disable cacheing
+    browser.on('targetchanged', async target => {
+        const page = await target.page();
+
+        args.verbose && console.debug(`  -  Page Target Changed: ${target.url()}`);
+        if (shouldWarnOAuth && target.url().match('/auth/callback')) {
+            console.warn(`!!!! OAuth Redirect Detected, was this expected?`);
+        }
+
+        // Disable cache
+        if (page) {
+            await page.setCacheEnabled(false)
+                .then(() => {
+                    args.verbose && console.error(`  *  Browser cache disabled`);
+                })
+                .catch(e => {
+                    args.verbose && console.error(`  [ ] Failed to disable cache`);
+                });
+        }
+    });
+
+    blockedPatterns.length && console.debug('Blocking URLs matching patterns: ', `\n\t${blockedPatterns.join(', ')}\n`);
+
+    let currentLine = 1;
+    let activeAuth = false;
+    let authedSubDomains = [];
+    let lastGroup;
+    const totalLength = args.onlyLine && args.onlyLine.length || urls.length;
+    for (const url of urls) {
+        currentLine++;
+
+        if (args.onlyLine && args.onlyLine.length) {
+            if (!~args.onlyLine.indexOf(currentLine)) {
+                continue;
+            }
+        }
+        if (args.onlyAuth && !url.needsAuth) {
+            continue;
+        }
+        currentCount++;
+
+        if (args.spacing && url.group != lastGroup) {
+            lastGroup = url.group;
+            console.log(url.group == 'Peers' ? '\n\n' : '\n');
+        }
+
+        // console.info(` ---------------------------------------------------------------------------------`);
+        !args.report && !args.spreadsheet && console.info(` | ${currentCount} of ${totalLength} | ${url.group} ${url.name} | ${url.path}`);
+        // console.info(` ---------------------------------------------------------------------------------`);
+
+        let login;
+        const urlObj = new URL(url.path);
+        if (url.needsAuth && (!~authedSubDomains.indexOf(urlObj.hostname) || !activeAuth)) {
+            args.verbose && console.info(`  *  Navigating to login page`);
+            browser.defaultBrowserContext().overridePermissions(urlObj.origin, ['geolocation', 'notifications']);
+            login = await browser.newPage();
+            await login._client.send('Network.setBypassServiceWorker', {bypass: true});
+            await login.setUserAgent('samizilla/5.0');
+            await login.setExtraHTTPHeaders({
+                'aarp-performance-testing': '74107dc85896b1432814411f46fee07e'
+            });
+            await blockAnalytics(login);
+            const authUrl = url.path.match(/stayingsharp/) ?
+                                buildStayingSharpAuth(urlObj) :
+                                url.path.match(/createthegood/) ?
+                                    buildCTGAuth(urlObj) :
+                                    url.path.match(/\.org\/rewards/) ?
+                                        buildRewardsOauth(urlObj) :
+                                        url.path.match(/applications\/user/) ?
+                                            buildGenericAuthUrl(urlObj) :
+                                                buildOAuthUrl(urlObj);
+
+            args.verbose && console.debug(`  =  Auth URL: ${authUrl}`);
+            await login.goto(authUrl);
+
+            activeAuth = await isAlreadyLoggedIn(login, url);
+            args.verbose && console.debug(`  *  Is logged in? ${activeAuth ? 'Yes' : 'No'}`);
+
+            try {
+                args.verbose && console.info(`  *  Filling login info`);
+                await login.waitForSelector(url.usernameSelector);
+                await login.type(url.usernameSelector, url.username);
+                await login.type(url.passwordSelector, url.password);
+                args.verbose && console.info(`  *  Waiting for login`);
+                await evalClick(login, url.submitSelector);
+                await login.waitForNavigation();
+            } catch(e) {}
+
+            activeAuth = await isAlreadyLoggedIn(login, url);
+            authedSubDomains.push(urlObj.hostname);
+        }
+
+        if (url.shouldBeAnon && url.path.match(/\.aarp\./) && authedSubDomains.length) {
+            // Clearing all data is easier than scripting logout so...
+            login = await browser.newPage();
+            // await blockAnalytics(login);
+            const logoutUrl = buildLogoutUrl(urlObj);
+            args.verbose && console.debug(`  =  Logout URL: ${logoutUrl}`);
+            await Promise.all([
+                login.goto(logoutUrl, {waitUntil: 'networkidle0', timeout: 3000}).catch(() => {}),
+                login.waitForNavigation({timeout: 10000}).catch(() => {}),
+            ]);
+
+            activeAuth = await isAlreadyLoggedIn(login, url);
+            authedSubDomains = [];
+        }
+
+        // args.verbose && console.warn(` [ ] disableStorageReset: ${activeAuth ? 'true' : 'false'}`);
+
+        args.verbose && console.info(` [ ] Running lighthouse test on ${url.path}`);
+        shouldWarnOAuth = true;
+        const results = await lighthouse(url.path, {
+            port: (new URL(browser.wsEndpoint())).port,
+            disableStorageReset: activeAuth ? true : false,
+            blockedUrlPatterns: blockedPatterns,
+            onlyCategories: categories
+        }).catch(e => {
+            console.error(`  [ ] Lighthouse error!`, e);
+        });
+        shouldWarnOAuth = false;
+
+        if (login) {
+            // args.verbose && console.info(`  *  Closing login page`);
+            await login.close();
+        }
+
+        if (results) {
+            // Print output
+            if (!args.nosave) {
+                let outputPath = `./tests/${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+                const timestampFilename = `${padNumber(date.getHours())}${padNumber(date.getMinutes())}${padNumber(date.getSeconds())}`;
+                if (!args.skipTimeOutput) {
+                    outputPath = `${outputPath}/${timestampFilename}`;
+                }
+                outputPath = `${outputPath}/${url.group}/${url.name}`;
+
+                const baseOutputFile = `${outputPath}/${timestampFilename}`;
+
+
+                args.verbose && console.info(` [*] Writing results to ${baseOutputFile}.json\n`);
+                if (!fs.existsSync(outputPath)) {
+                    fs.mkdirSync(outputPath, {recursive: true});
+                }
+                fs.writeFileSync(`${baseOutputFile}.json`, JSON.stringify(results.lhr));
+
+            }
+
+            if (args.outputAllFiles) {
+                fs.writeFileSync(`${baseOutputFile}.artifacts.json`, JSON.stringify(results.artifacts));
+                fs.writeFileSync(`${baseOutputFile}.report.json`, JSON.stringify(results.report));
+            }
+
+            // Print scores
+            !args.report && !args.spreadsheet && console.info(`     ${Object.values(results.lhr.categories).map(c => `${c.title}: ${Math.round(c.score * 100)}`).join(' | ')}\n`);
+            // !args.report && console.info(`${Object.values(results.lhr.categories).map(c => `${Math.round(c.score * 100)}`).join(' | ')}`);
+            args.report && console.info(`${Object.values(results.lhr.categories).map(c => `${Math.round(c.score * 100)}`).join('\t')}\t${url.path}${args.verbose ? '\n' : ''}`);
+            args.spreadsheet && console.info(`\t\t${Object.values(results.lhr.categories).map(c => `${Math.round(c.score * 100)}`).join('\t\t')}\t${url.path}${args.verbose ? '\n' : ''}`);
+        } else {
+            console.error(`  *  Unable to print results due to a lighthouse error`);
+        }
+    }
+
+    await browser.close();
+})();

@@ -1,0 +1,216 @@
+---
+- name: Dummy
+  items:
+      - name: Dummy
+        path: https://www.google.com/
+- name: Content
+  items:
+      - name: Homepage
+        path: https://www.aarp.org/
+      - name: Channel
+        path: https://www.aarp.org/money/
+      - name: Example Article
+        path: https://www.aarp.org/health/healthy-living/info-2018/prescription-pill-bottle-drug-safety.html
+      - name: Gallery Component
+        path: https://www.aarp.org/entertainment/celebrities/info-2017/famous-birthdays-november-photo.html?intcmp=AE-HP-TREND3-FD#slide1
+      - name: Search
+        path: https://www.aarp.org/search/?q=&c=everywhere
+      - name: Travel Channel
+        path: https://www.aarp.org/travel/
+      - name: Blog
+        path: https://blog.aarp.org/
+      - name: Videos
+        path: https://videos.aarp.org/
+      - name: States
+        path: https://states.aarp.org/
+      - name: Girlfriend Homepage
+        path: https://www.thegirlfriend.com/
+      - name: Girlfriend Article
+        path: https://www.thegirlfriend.com/work/3-ways-millennial-proof-job
+      - name: Sisters Homepage
+        path: https://www.sistersletter.com/
+      - name: Sisters Article
+        path: https://www.sistersletter.com/we-time/its-time-to-get-rid-of-toxic-friendships
+      - name: The Ethel
+        path: https://www.aarpethel.com/
+- name: Membership Growth & Engagement
+  items:
+      - name: Join
+        path: https://appsec.aarp.org/mem/join
+      - name: Renew
+        path: https://appsec.aarp.org/mem/renew
+      - name: Join LP
+        path: https://www.aarp.org/membership/
+      - name: Renew LP
+        path: https://www.aarp.org/membership/renew/
+- name: Staying Sharp
+  items:
+      - name: Authenticated Homepage
+        path: https://stayingsharp.aarp.org/authenticated/
+        needsAuth: oauth
+      - name: Example Article
+        path: https://stayingsharp.aarp.org/articles/screens-brain-rest-sleep/
+        needsAuth: oauth
+      - name: Anonymous Homepage
+        path: https://stayingsharp.aarp.org/
+      - name: Example Activity
+        path: https://stayingsharp.aarp.org/activities/relax-reminder-note/
+        needsAuth: oauth
+      - name: Example Recipe
+        path: https://stayingsharp.aarp.org/recipes/turkey-wild-rice-soup/
+        needsAuth: oauth
+      - name: Video Landing
+        path: https://stayingsharp.aarp.org/videos/
+        needsAuth: oauth
+      - name: My Plan
+        path: https://stayingsharp.aarp.org/my-list/
+        needsAuth: oauth
+      - name: Assessment Results
+        path: https://stayingsharp.aarp.org/assessment/result/
+        needsAuth: oauth
+      - name: Assessment Landing
+        path: https://stayingsharp.aarp.org/assessment/
+        needsAuth: oauth
+      - name: Lifestyle Questionnaire
+        path: https://stayingsharp.aarp.org/assessment/lifestyle-questionnaire/
+        needsAuth: oauth
+      - name: Challenge Landing Page
+        path: https://stayingsharp.aarp.org/challenges/
+        needsAuth: oauth
+      - name: Replay, Recall, Repeat
+        path: https://stayingsharp.aarp.org/challenges/replay-recall-repeat/
+        needsAuth: oauth
+- name: Rewards
+  items:
+      - name: Rewards
+        path: https://www.aarp.org/rewards/
+      - name: Discover
+        path: https://www.aarp.org/rewards/discover/
+        needsAuth: generic
+      - name: Earn
+        path: https://www.aarp.org/rewards/earn/
+        needsAuth: generic
+      - name: Redeem
+        path: https://www.aarp.org/rewards/redeem/
+        needsAuth: generic
+      - name: Extra Credit
+        path: https://www.aarp.org/rewards/redeem/extracredit/
+        needsAuth: generic
+      - name: Local
+        path: https://www.aarp.org/rewards/redeem/local/
+        needsAuth: generic
+      - name: Transaction History
+        path: https://www.aarp.org/rewards/transaction/
+        needsAuth: generic
+- name: Member Value & Communication
+  items:
+      - name: Channel
+        path: https://www.aarp.org/benefits-discounts/
+      - name: Spanish Channel
+        path: https://www.aarp.org/espanol/servicios-descuentos/
+      - name: Get Started
+        path: https://secure.aarp.org/applications/user/gslookup?cmp=RDRCI-GETSTARTED
+      - name: Members Only Access
+        path: https://www.aarp.org/benefits-discounts/members-only-access
+        needsAuth: oauth
+      - name: Weight Watchers
+        path: https://www.aarp.org/health/healthy-living/myww/
+      - name: Audible
+        path: https://www.aarp.org/benefits-discounts/audible/
+      - name: Autos
+        path: https://auto.aarp.org/
+      - name: Auto Buying
+        path: https://autobuying.aarp.org/
+- name: Social Action
+  items:
+      - name: Tax Aide
+        path: https://secure.aarp.org/applications/Volunteer_with_AARP_Tax_Aide/aboutYou.action?jobId=a1oo0000001AGvXAAW
+      - name: AARP Rx
+        path: https://drugprices.aarp.org/
+      - name: Driver Safety
+        path: https://www.aarpdriversafety.org/
+      - name: Smart Driver
+        path: https://campaigns.aarp.org/findaworkshop/
+      - name: Legislative Action
+        path: https://action.aarp.org/
+      - name: AARP Foundation
+        path: https://www.aarp.org/aarp-foundation/
+      - name: Scam Map
+        path: https://www.aarp.org/money/scams-fraud/tracking-map/
+      - name: Create The Good Homepage Authed
+        path: https://createthegood.aarp.org/
+        needsAuth: oauth
+      - name: Caregiving Channel
+        path: https://www.aarp.org/caregiving/
+      - name: Caregiving Guides
+        path: https://www.aarp.org/caregiving/care-guides/first-time-caregiving/
+      - name: Caregiving Article
+        path: https://www.aarp.org/caregiving/care-guides/dementia/
+      - name: Work & Jobs Channel
+        path: https://www.aarp.org/work/
+      - name: Work & Jobs Article
+        path: https://www.aarp.org/work/career-change/info-2018/certificates-career-boosts.html
+      - name: Employers
+        path: https://www.aarp.org/work/employers/
+      - name: Resume Advisor
+        path: https://www.aarp.org/work/resume-advisor/
+      - name: Local
+        path: https://local.aarp.org/
+      - name: Online Community
+        path: https://community.aarp.org/
+      - name: Learn
+        path: https://learn.aarp.org/
+      - name: e-Learning
+        path: https://elearning.aarp.org/Pages/Catalog/CourseCatalog.aspx
+      - name: Games
+        path: https://games.aarp.org/
+      - name: Policybook
+        path: https://policybook.aarp.org/
+      - name: Data Explorer
+        path: https://dataexplorer.aarp.org/
+      - name: Future of Housing
+        path: https://futureofhousing.aarp.org/
+      - name: Livability Index State Data
+        path: https://livindexstatedata.aarp.org/
+      - name: Livability Index
+        path: https://livabilityindex.aarp.org/
+      - name: Voter Awareness
+        path: https://votingtool.aarp.org/
+      - name: Job Board
+        path: https://jobs.aarp.org/
+- name: Omnichannel
+  items:
+      - name: Login
+        path: https://secure.aarp.org/applications/user/login
+      - name: Register
+        path: https://secure.aarp.org/applications/user/register
+      - name: New Password Reset
+        path: https://secure.aarp.org/applications/user/reset/requestReset
+      - name: Member Lookup
+        path: https://secure.aarp.org/applications/user/gslookup
+      - name: Login Promo
+        path: https://secure.aarp.org/applications/user/login?promo=r4g
+      - name: Account Manager
+        path: https://secure.aarp.org/account/myaarp
+        needsAuth: 'generic'
+      - name: Account Details
+        path: https://secure.aarp.org/account/editaccount
+        needsAuth: 'generic'
+- name: Salesforce
+  items:
+      - name: Help
+        path: https://help.aarp.org/s/
+- name: Peers
+  items:
+      - name: NPR
+        path: https://www.npr.org/
+      - name: CNN
+        path: https://www.cnn.com/
+      - name: ESPN
+        path: https://www.espn.com/
+      - name: NYT
+        path: https://www.nytimes.com/
+      - name: Washington Post
+        path: https://www.washingtonpost.com/
+      - name: Vanity Fair
+        path: https://www.vanityfair.com/
